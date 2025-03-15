@@ -10,7 +10,7 @@ const COOLDOWN_SECONDS = 3600; // 1 hour
 
 exports.claimCoupon = functions.https.onRequest(async (req, res) => {
   // ✅ CORS Setup: Specify the frontend URL, not '*'
-  res.set('Access-Control-Allow-Origin', 'https://coupon-distribution-nine.vercel.app'); 
+  res.set('Access-Control-Allow-Origin', 'https://coupon-distribution-one.vercel.app'); 
   res.set('Access-Control-Allow-Credentials', 'true');
   res.set('Access-Control-Allow-Headers', ' Content-Type, Authorization');
   res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
