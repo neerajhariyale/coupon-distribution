@@ -27,7 +27,7 @@ function App() {
         <h1 className="text-2xl font-bold mb-4">Coupon Distributor</h1>
         <button
           onClick={claimCoupon}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
         >
           Claim Coupon
         </button>

@@ -8,9 +8,19 @@ const db = admin.firestore();
 const COUPONS = ['COUPON1', 'COUPON2', 'COUPON3', 'COUPON4'];
 const COOLDOWN_SECONDS = 3600; // 1 hour
 
+const allowedOrigins = ['https://coupon-distribution-one.vercel.app',
+  'https://coupon-distribution-nine.vercel.app'];
+
 exports.claimCoupon = functions.https.onRequest(async (req, res) => {
+    const origin =req.get('Origin');
   // ✅ CORS Setup: Specify the frontend URL, not '*'
-  res.set('Access-Control-Allow-Origin', 'https://coupon-distribution-one.vercel.app'); 
+
+  if (allowedOrigins.includes(origin)) {
+    res.set('Access-Control-Allow-Origin', origin);
+  } else {
+    res.set('Access-Control-Allow-Origin', ''); // Or reject here if needed
+  }
+
   res.set('Access-Control-Allow-Credentials', 'true');
   res.set('Access-Control-Allow-Headers', ' Content-Type, Authorization');
   res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -24,6 +34,7 @@ exports.claimCoupon = functions.https.onRequest(async (req, res) => {
              req.headers['x-forwarded-for'] ||
              req.connection.remoteAddress;
 
+  console.log("Detected IP:", ip);
   const cookies = cookie.parse(req.headers.cookie || '');
   const cookieId = cookies.couponClaimed || null;
 
