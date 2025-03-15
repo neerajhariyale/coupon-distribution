@@ -8,6 +8,8 @@ const db = admin.firestore();
 const COUPONS = ['COUPON1', 'COUPON2', 'COUPON3', 'COUPON4'];
 const COOLDOWN_SECONDS = 3600; // 1 hour
 
+
+//frontend url
 const allowedOrigins = [
   'https://coupon-distribution-one.vercel.app',
   'https://coupon-distribution-nine.vercel.app'
@@ -46,13 +48,13 @@ exports.claimCoupon = functions.https.onRequest(async (req, res) => {
     const ipDocRef = db.collection('claims').doc(ip);
     const ipDoc = await ipDocRef.get();
 
-    // ✅ Debug log IP doc details
+    // log IP doc details
     console.log(`IP doc exists: ${ipDoc.exists}`);
     if (ipDoc.exists) {
       const lastClaimTime = ipDoc.data().lastClaim.toMillis();
       console.log(`IP lastClaim: ${lastClaimTime}`);
       
-      // Check if IP is still on cooldown
+      // Check if IP cooldown
       if (lastClaimTime > cutoff.toMillis()) {
         const nextAttemptIn = COOLDOWN_SECONDS - ((now.toMillis() - lastClaimTime) / 1000);
         
@@ -63,25 +65,25 @@ exports.claimCoupon = functions.https.onRequest(async (req, res) => {
       }
     }
 
-    // ✅ If cookie is present, block (Browser session protection)
+    // cookie is present, block 
     if (cookieId) {
       return res.status(429).json({
         message: 'You have already claimed a coupon in this browser session.',
       });
     }
 
-    // ✅ Round Robin Coupon distribution logic
+    //Round Robin Coupon distribution logic
     const claimsSnapshot = await db.collection('claims').get();
     const count = claimsSnapshot.size;
     const coupon = COUPONS[count % COUPONS.length];
 
-    // ✅ Save claim to Firestore for IP cooldown tracking
+    //  IP cooldown tracking
     await ipDocRef.set({
       lastClaim: now,
       coupon
     });
 
-    // ✅ Set Cookie in Response (Browser-based cooldown)
+    // Cookie Response 
     res.setHeader('Set-Cookie', cookie.serialize('couponClaimed', coupon, {
       maxAge: COOLDOWN_SECONDS,
       httpOnly: false,
@@ -90,7 +92,7 @@ exports.claimCoupon = functions.https.onRequest(async (req, res) => {
       path: '/'
     }));
 
-    // ✅ Success Response
+    //for Success Response
     return res.json({
       message: `Success! Your coupon: ${coupon}`
     });

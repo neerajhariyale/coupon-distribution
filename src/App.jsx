@@ -10,9 +10,10 @@ function App() {
     setLoading(true);
     setMessage('');
     try {
+      //firebase url ( backend)
       const res = await axios.post(
         'https://us-central1-roundrobin3112database.cloudfunctions.net/claimCoupon',
-        {}, // no payload required; IP auto-detected by backend
+        {}, 
         { withCredentials: true }
       );
 
@@ -44,7 +45,7 @@ function App() {
     }
   };
 
-  // Optional: Countdown timer for the user
+  // Countdown timer for the user
   useEffect(() => {
     if (!timer) return;
 
@@ -68,7 +69,7 @@ function App() {
 
         <button
           onClick={claimCoupon}
-          disabled={loading || (timer && timer > 0)} // disable when loading or cooldown is active
+          disabled={loading || (timer && timer > 0)} 
           className={`px-4 py-2 rounded text-white cursor-pointer transition-all ${
             loading || (timer && timer > 0)
               ? 'bg-gray-400 cursor-not-allowed'
