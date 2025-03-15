@@ -8,24 +8,24 @@ const db = admin.firestore();
 const COUPONS = ['COUPON1', 'COUPON2', 'COUPON3', 'COUPON4'];
 const COOLDOWN_SECONDS = 3600; // 1 hour
 
-const allowedOrigins = ['https://coupon-distribution-one.vercel.app',
-  'https://coupon-distribution-nine.vercel.app'];
+const allowedOrigins = [
+  'https://coupon-distribution-one.vercel.app',
+  'https://coupon-distribution-nine.vercel.app'
+];
 
 exports.claimCoupon = functions.https.onRequest(async (req, res) => {
-    const origin =req.get('Origin');
-  // ✅ CORS Setup: Specify the frontend URL, not '*'
+  const origin = req.get('Origin');
 
   if (allowedOrigins.includes(origin)) {
     res.set('Access-Control-Allow-Origin', origin);
   } else {
-    res.set('Access-Control-Allow-Origin', ''); // Or reject here if needed
+    res.set('Access-Control-Allow-Origin', '');
   }
 
   res.set('Access-Control-Allow-Credentials', 'true');
-  res.set('Access-Control-Allow-Headers', ' Content-Type, Authorization');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 
-  // ✅ Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.status(204).send('');
   }
@@ -35,6 +35,7 @@ exports.claimCoupon = functions.https.onRequest(async (req, res) => {
              req.connection.remoteAddress;
 
   console.log("Detected IP:", ip);
+
   const cookies = cookie.parse(req.headers.cookie || '');
   const cookieId = cookies.couponClaimed || null;
 
@@ -42,46 +43,58 @@ exports.claimCoupon = functions.https.onRequest(async (req, res) => {
   const cutoff = admin.firestore.Timestamp.fromMillis(now.toMillis() - COOLDOWN_SECONDS * 1000);
 
   try {
-    // Check IP abuse
-    const ipDoc = await db.collection('claims').doc(ip).get();
-    if (ipDoc.exists && ipDoc.data().lastClaim.toMillis() > cutoff.toMillis()) {
-      const nextAttemptIn = COOLDOWN_SECONDS - ((now.toMillis() - ipDoc.data().lastClaim.toMillis()) / 1000);
-      return res.status(429).json({
-        message: 'You have already claimed a coupon recently. Please wait.',
-        nextAttemptIn
-      });
+    const ipDocRef = db.collection('claims').doc(ip);
+    const ipDoc = await ipDocRef.get();
+
+    // ✅ Debug log IP doc details
+    console.log(`IP doc exists: ${ipDoc.exists}`);
+    if (ipDoc.exists) {
+      const lastClaimTime = ipDoc.data().lastClaim.toMillis();
+      console.log(`IP lastClaim: ${lastClaimTime}`);
+      
+      // Check if IP is still on cooldown
+      if (lastClaimTime > cutoff.toMillis()) {
+        const nextAttemptIn = COOLDOWN_SECONDS - ((now.toMillis() - lastClaimTime) / 1000);
+        
+        return res.status(429).json({
+          message: 'You have already claimed a coupon recently with this IP. Please wait.',
+          nextAttemptIn
+        });
+      }
     }
 
-    // Check cookie abuse
+    // ✅ If cookie is present, block (Browser session protection)
     if (cookieId) {
       return res.status(429).json({
-        message: 'You have already claimed a coupon on this browser session.',
+        message: 'You have already claimed a coupon in this browser session.',
       });
     }
 
-    // Round Robin Coupon distribution logic
+    // ✅ Round Robin Coupon distribution logic
     const claimsSnapshot = await db.collection('claims').get();
     const count = claimsSnapshot.size;
     const coupon = COUPONS[count % COUPONS.length];
 
-    // Save claim to Firestore
-    await db.collection('claims').doc(ip).set({
+    // ✅ Save claim to Firestore for IP cooldown tracking
+    await ipDocRef.set({
       lastClaim: now,
       coupon
     });
 
-    // Set a cookie (expires in 1 hour)
+    // ✅ Set Cookie in Response (Browser-based cooldown)
     res.setHeader('Set-Cookie', cookie.serialize('couponClaimed', coupon, {
       maxAge: COOLDOWN_SECONDS,
-      httpOnly: false,  // ❗️ Consider making this true in production if not accessing in JS
-      secure: true,      // ✅ Required for cross-origin cookies (Vercel frontend is HTTPS)
-      sameSite: 'None',  // ✅ Required for cross-origin cookies
-      path: '/',
+      httpOnly: false,
+      secure: true,
+      sameSite: 'None',
+      path: '/'
     }));
 
+    // ✅ Success Response
     return res.json({
       message: `Success! Your coupon: ${coupon}`
     });
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Server error' });
