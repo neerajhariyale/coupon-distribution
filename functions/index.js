@@ -9,11 +9,15 @@ const COUPONS = ['COUPON1', 'COUPON2', 'COUPON3', 'COUPON4'];
 const COOLDOWN_SECONDS = 3600; // 1 hour
 
 exports.claimCoupon = functions.https.onRequest(async (req, res) => {
-  res.set('Access-Control-Allow-Origin', '*');
+  // ✅ CORS Setup: Specify the frontend URL, not '*'
+  res.set('Access-Control-Allow-Origin', 'https://coupon-distribution-nine.vercel.app'); 
   res.set('Access-Control-Allow-Credentials', 'true');
+  res.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+
+  // ✅ Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
-    res.status(204).send('');
-    return;
+    return res.status(204).send('');
   }
 
   const ip = req.headers['fastly-client-ip'] ||
@@ -58,7 +62,9 @@ exports.claimCoupon = functions.https.onRequest(async (req, res) => {
     // Set a cookie (expires in 1 hour)
     res.setHeader('Set-Cookie', cookie.serialize('couponClaimed', coupon, {
       maxAge: COOLDOWN_SECONDS,
-      httpOnly: false,
+      httpOnly: false,  // ❗️ Consider making this true in production if not accessing in JS
+      secure: true,      // ✅ Required for cross-origin cookies (Vercel frontend is HTTPS)
+      sameSite: 'None',  // ✅ Required for cross-origin cookies
       path: '/',
     }));
 
